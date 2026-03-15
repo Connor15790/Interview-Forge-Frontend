@@ -1,9 +1,10 @@
 "use client";
 
+import { useState } from "react";
+
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
 
 const navLinks = [
   { href: "/dashboard", label: "Dashboard" },
@@ -37,11 +38,10 @@ export default function Navbar() {
             <Link
               key={href}
               href={href}
-              className={`relative rounded-lg px-3 py-1.5 text-sm font-medium transition-colors duration-150 no-underline ${
-                pathname === href
-                  ? "bg-surface-raised text-primary"
-                  : "text-secondary hover:bg-surface-raised hover:text-primary"
-              }`}
+              className={`relative rounded-lg px-3 py-1.5 text-sm font-medium transition-colors duration-150 no-underline ${pathname === href
+                ? "bg-surface-raised text-primary"
+                : "text-secondary hover:bg-surface-raised hover:text-primary"
+                }`}
             >
               {label}
               {pathname === href && (
@@ -56,11 +56,10 @@ export default function Navbar() {
           {user ? (
             <div className="flex items-center gap-2.5">
               <span
-                className={`hidden rounded-full border px-2.5 py-0.5 text-xs font-semibold uppercase tracking-widest sm:inline-flex ${
-                  user.plan === "pro"
-                    ? "border-accent/20 bg-accent/10 text-accent"
-                    : "border-border bg-surface-raised text-muted"
-                }`}
+                className={`hidden rounded-full border px-2.5 py-0.5 text-xs font-semibold uppercase tracking-widest sm:inline-flex ${user.plan === "pro"
+                  ? "border-accent/20 bg-accent/10 text-accent"
+                  : "border-border bg-surface-raised text-muted"
+                  }`}
               >
                 {user.plan === "pro" ? "Pro" : "Free"}
               </span>
@@ -148,11 +147,10 @@ export default function Navbar() {
               key={href}
               href={href}
               onClick={() => setMenuOpen(false)}
-              className={`rounded-lg px-3 py-2.5 text-sm font-medium no-underline transition-colors ${
-                pathname === href
-                  ? "bg-surface-raised text-primary"
-                  : "text-secondary hover:text-primary"
-              }`}
+              className={`rounded-lg px-3 py-2.5 text-sm font-medium no-underline transition-colors ${pathname === href
+                ? "bg-surface-raised text-primary"
+                : "text-secondary hover:text-primary"
+                }`}
             >
               {label}
             </Link>

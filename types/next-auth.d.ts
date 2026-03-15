@@ -8,11 +8,13 @@ declare module "next-auth" {
       email?: string | null;
       image?: string | null;
       plan: "free" | "pro";
+      token: string;
     };
   }
 
   interface JWT {
     _id: string;
     plan: "free" | "pro";
+    token: string;
   }
 }
