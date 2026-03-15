@@ -1,8 +1,13 @@
 "use client";
 
 import { useState } from "react";
+
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+
+import api from "@/lib/axios";
+
+import { Spinner } from "@/components/Spinner";
 import Navbar from "@/components/Navbar";
 
 const DIFFICULTIES = ["Beginner", "Intermediate", "Advanced"] as const;
@@ -21,8 +26,7 @@ const TOPIC_SUGGESTIONS = [
 
 const difficultyDescriptions: Record<Difficulty, string> = {
   Beginner: "Foundational concepts, clear explanations, introductory questions",
-  Intermediate:
-    "Core patterns, practical examples, mid-level interview questions",
+  Intermediate: "Core patterns, practical examples, mid-level interview questions",
   Advanced: "Deep dives, edge cases, senior-level and FAANG-style questions",
 };
 
@@ -46,32 +50,56 @@ export default function GeneratePage() {
   const [lessonCount, setLessonCount] = useState(5);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [loadingMessage, setLoadingMessage] = useState("");
 
   const isPro = session?.user?.plan === "pro";
-  const usedThisMonth = 2; // mock — will come from backend
-  const remaining = 3 - usedThisMonth;
-  const canGenerate = isPro || remaining > 0;
+
+  const loadingMessages = [
+    "Crafting your lesson structure...",
+    "Generating quiz questions...",
+    "Writing revision summaries...",
+    "Attaching YouTube videos...",
+    "Almost done...",
+  ];
 
   async function handleGenerate() {
     if (!topic.trim()) {
       setError("Please enter a topic before generating.");
       return;
     }
-    if (!canGenerate) {
-      setError(
-        "You have reached your free tier limit. Upgrade to Pro for unlimited generations.",
-      );
-      return;
-    }
 
     setError("");
     setLoading(true);
+    setLoadingMessage(loadingMessages[0]);
 
-    // Will call POST /api/generate on the Express backend in Day 2
-    await new Promise((r) => setTimeout(r, 2000));
+    // Cycle through loading messages while waiting
+    let msgIndex = 0;
+    const msgInterval = setInterval(() => {
+      msgIndex = (msgIndex + 1) % loadingMessages.length;
+      setLoadingMessage(loadingMessages[msgIndex]);
+    }, 3000);
 
-    setLoading(false);
-    router.push("/courses/1");
+    try {
+      const res = await api.post("/api/generate/generateCourse", {
+        topic,
+        difficulty,
+        lessonCount,
+      });
+
+      const courseId = res.data.course._id;
+      router.push(`/courses/${courseId}`);
+    } catch (err: any) {
+      const message = err.response?.data?.message;
+      if (err.response?.status === 403) {
+        setError(message ?? "You have reached your free tier limit. Upgrade to Pro for unlimited generations.");
+      } else {
+        setError(message ?? "Failed to generate course. Please try again.");
+      }
+    } finally {
+      clearInterval(msgInterval);
+      setLoading(false);
+      setLoadingMessage("");
+    }
   }
 
   return (
@@ -79,6 +107,7 @@ export default function GeneratePage() {
       <Navbar />
 
       <main className="mx-auto max-w-6xl px-6 py-12">
+
         {/* Header */}
         <div className="mb-10 animate-fade-up">
           <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-accent">
@@ -89,25 +118,25 @@ export default function GeneratePage() {
           </h1>
           <p className="max-w-xl text-sm leading-relaxed text-secondary">
             Enter an interview topic and CourseForge will generate a structured
-            micro-course with lessons, quizzes, and revision summaries powered
-            by Gemini.
+            micro-course with lessons, quizzes, and revision summaries powered by Gemini.
           </p>
         </div>
 
         <div className="grid gap-8 lg:grid-cols-5">
-          {/* Form — 3 cols */}
+
+          {/* Form */}
           <div className="lg:col-span-3 animate-fade-up-1">
             <div className="rounded-xl border border-border bg-surface p-6 shadow-sm">
+
               {/* Free tier banner */}
               {!isPro && (
                 <div className="mb-6 flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
                   <div>
                     <p className="text-sm font-semibold text-amber-800">
-                      Free tier — {remaining} generation
-                      {remaining !== 1 ? "s" : ""} remaining
+                      Free tier — 3 generations/month
                     </p>
                     <p className="text-xs text-amber-700">
-                      Resets monthly. Upgrade for unlimited access.
+                      Upgrade for unlimited access and YouTube videos.
                     </p>
                   </div>
                   <a
@@ -133,21 +162,19 @@ export default function GeneratePage() {
                     setError("");
                   }}
                   placeholder="e.g. System Design, Dynamic Programming, React..."
-                  className="w-full rounded-lg border border-border bg-bg px-4 py-3 text-sm text-primary placeholder-muted outline-none transition-all duration-150 focus:border-accent focus:ring-2 focus:ring-accent/20"
+                  className="w-full rounded-lg border border-border bg-bg px-4 py-3 text-sm text-primary placeholder-muted outline-none transition-all focus:border-accent focus:ring-2 focus:ring-accent/20"
                 />
 
-                {/* Topic suggestions */}
+                {/* Suggestions */}
                 <div className="mt-3 flex flex-wrap gap-2">
                   {TOPIC_SUGGESTIONS.map((s) => (
                     <button
                       key={s}
                       onClick={() => setTopic(s)}
-                      className={`rounded-full border px-3 py-1 text-xs font-medium transition-all duration-150 cursor-pointer ${
-                        topic === s
-                          ? (topicStyles[s] ??
-                            "bg-accent/10 text-accent border-accent/30")
-                          : "border-border bg-surface-raised text-secondary hover:border-accent/30 hover:text-primary"
-                      }`}
+                      className={`cursor-pointer rounded-full border px-3 py-1 text-xs font-medium transition-all duration-150 ${topic === s
+                        ? topicStyles[s] ?? "bg-accent/10 text-accent border-accent/30"
+                        : "border-border bg-surface-raised text-secondary hover:border-accent/30 hover:text-primary"
+                        }`}
                     >
                       {s}
                     </button>
@@ -165,11 +192,10 @@ export default function GeneratePage() {
                     <button
                       key={d}
                       onClick={() => setDifficulty(d)}
-                      className={`flex-1 cursor-pointer rounded-md border-none py-2 text-sm font-medium transition-all duration-150 ${
-                        difficulty === d
-                          ? "bg-surface text-primary shadow-sm"
-                          : "bg-transparent text-secondary hover:text-primary"
-                      }`}
+                      className={`flex-1 cursor-pointer rounded-md border-none py-2 text-sm font-medium transition-all duration-150 ${difficulty === d
+                        ? "bg-surface text-primary shadow-sm"
+                        : "bg-transparent text-secondary hover:text-primary"
+                        }`}
                     >
                       {d}
                     </button>
@@ -214,13 +240,13 @@ export default function GeneratePage() {
               {/* Generate button */}
               <button
                 onClick={handleGenerate}
-                disabled={loading || !canGenerate}
+                disabled={loading}
                 className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-accent py-3 text-sm font-semibold text-white transition-all duration-150 hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {loading ? (
                   <>
                     <Spinner />
-                    Generating your course...
+                    Generating...
                   </>
                 ) : (
                   "Generate Course with AI"
@@ -228,15 +254,14 @@ export default function GeneratePage() {
               </button>
 
               {loading && (
-                <p className="mt-3 text-center text-xs text-secondary">
-                  Gemini is crafting your lessons, quizzes, and summaries. This
-                  takes about 10–15 seconds.
+                <p className="mt-3 text-center text-xs text-secondary transition-all duration-300">
+                  {loadingMessage}
                 </p>
               )}
             </div>
           </div>
 
-          {/* Preview — 2 cols */}
+          {/* Preview */}
           <div className="lg:col-span-2 animate-fade-up-2">
             <div className="sticky top-24">
               <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted">
@@ -244,26 +269,20 @@ export default function GeneratePage() {
               </p>
 
               <div className="rounded-xl border border-border bg-surface p-5 shadow-sm">
-                {/* Topic pill */}
+                {/* Badges */}
                 <div className="mb-4 flex items-center gap-2">
-                  <span
-                    className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                      topic
-                        ? (topicStyles[topic] ?? "bg-accent/10 text-accent")
-                        : "bg-surface-raised text-muted"
-                    }`}
-                  >
+                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${topic
+                    ? topicStyles[topic] ?? "bg-accent/10 text-accent"
+                    : "bg-surface-raised text-muted"
+                    }`}>
                     {topic || "Your Topic"}
                   </span>
-                  <span
-                    className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
-                      difficulty === "Beginner"
-                        ? "border-green-200 bg-green-50 text-green-700"
-                        : difficulty === "Intermediate"
-                          ? "border-amber-200 bg-amber-50 text-amber-700"
-                          : "border-red-200 bg-red-50 text-red-700"
-                    }`}
-                  >
+                  <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${difficulty === "Beginner"
+                    ? "border-green-200 bg-green-50 text-green-700"
+                    : difficulty === "Intermediate"
+                      ? "border-amber-200 bg-amber-50 text-amber-700"
+                      : "border-red-200 bg-red-50 text-red-700"
+                    }`}>
                     {difficulty}
                   </span>
                 </div>
@@ -280,7 +299,7 @@ export default function GeneratePage() {
                     : "Enter a topic above to see a preview of your course."}
                 </p>
 
-                {/* Lesson list preview */}
+                {/* Lesson skeletons */}
                 <div className="space-y-2">
                   {Array.from({ length: lessonCount }).map((_, i) => (
                     <div
@@ -291,17 +310,8 @@ export default function GeneratePage() {
                         {i + 1}
                       </span>
                       <div className="flex-1">
-                        <div
-                          className={`h-2 rounded-full bg-border ${
-                            i === 0
-                              ? "w-3/4"
-                              : i === 1
-                                ? "w-2/3"
-                                : i === 2
-                                  ? "w-4/5"
-                                  : "w-1/2"
-                          }`}
-                        />
+                        <div className={`h-2 rounded-full bg-border ${i === 0 ? "w-3/4" : i === 1 ? "w-2/3" : i === 2 ? "w-4/5" : "w-1/2"
+                          }`} />
                       </div>
                     </div>
                   ))}
@@ -309,22 +319,17 @@ export default function GeneratePage() {
 
                 {/* What's included */}
                 <div className="mt-4 border-t border-border pt-4">
-                  <p className="mb-2 text-xs font-semibold text-muted">
-                    Each lesson includes
-                  </p>
+                  <p className="mb-2 text-xs font-semibold text-muted">Each lesson includes</p>
                   <ul className="space-y-1.5">
                     {[
                       "Detailed lesson content",
                       "Quiz questions",
                       "Quick revision summary",
-                      topic && !isPro ? null : "YouTube video (Pro)",
+                      isPro ? "YouTube video" : null,
                     ]
                       .filter(Boolean)
                       .map((item) => (
-                        <li
-                          key={item as string}
-                          className="flex items-center gap-2 text-xs text-secondary"
-                        >
+                        <li key={item as string} className="flex items-center gap-2 text-xs text-secondary">
                           <span className="flex h-4 w-4 items-center justify-center rounded-full bg-accent/10 text-accent">
                             ✓
                           </span>
@@ -338,12 +343,9 @@ export default function GeneratePage() {
               {/* Pro upsell */}
               {!isPro && (
                 <div className="mt-4 rounded-xl border border-accent/20 bg-accent/5 p-4">
-                  <p className="mb-1 text-sm font-semibold text-primary">
-                    Unlock Pro
-                  </p>
+                  <p className="mb-1 text-sm font-semibold text-primary">Unlock Pro</p>
                   <p className="mb-3 text-xs leading-relaxed text-secondary">
-                    Get unlimited generations, YouTube videos per lesson, custom
-                    thumbnails, private courses, and completion certificates.
+                    Unlimited generations, YouTube videos, custom thumbnails, private courses, and completion certificates.
                   </p>
                   <a
                     href="/upgrade"
@@ -358,30 +360,5 @@ export default function GeneratePage() {
         </div>
       </main>
     </div>
-  );
-}
-
-function Spinner() {
-  return (
-    <svg
-      className="h-4 w-4 animate-spin"
-      xmlns="http://www.w3.org/2000/svg"
-      fill="none"
-      viewBox="0 0 24 24"
-    >
-      <circle
-        className="opacity-25"
-        cx="12"
-        cy="12"
-        r="10"
-        stroke="currentColor"
-        strokeWidth="4"
-      />
-      <path
-        className="opacity-75"
-        fill="currentColor"
-        d="M4 12a8 8 0 018-8v8z"
-      />
-    </svg>
   );
 }

@@ -56,7 +56,7 @@ export const authOptions: NextAuthOptions = {
       if (account?.provider === "google") {
         try {
           await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/api/auth/upsert-user`,
+            `${process.env.NEXT_PUBLIC_API_URL}/api/auth/upsertUser`,
             {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -79,17 +79,24 @@ export const authOptions: NextAuthOptions = {
         if (account?.provider === "google") {
           // Fetch _id, plan and a signed token from Express
           try {
-            const res = await fetch(
-              `${process.env.NEXT_PUBLIC_API_URL}/api/auth/fetchUser?email=${user.email}`
-            );
+            const url = `${process.env.NEXT_PUBLIC_API_URL}/api/auth/fetchUser?email=${user.email}`;
+            console.log("Fetching me from:", url);
+
+            const res = await fetch(url);
+            const data = await res.json();
+
+            console.log("me response status:", res.status);
+            console.log("me response data:", data);
 
             if (res.ok) {
-              const data = await res.json();
               token._id = data._id;
               token.plan = data.plan;
               token.token = data.token;
+            } else {
+              console.error("me endpoint failed:", data);
             }
-          } catch {
+          } catch (error) {
+            console.error("me fetch error:", error);
             token.plan = "free";
           }
         } else {
