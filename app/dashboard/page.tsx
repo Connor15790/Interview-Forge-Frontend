@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
@@ -291,4 +291,10 @@ const DashboardPage = () => {
   );
 }
 
-export default DashboardPage;
+export default function DashboardPageWrapper() {
+  return (
+    <Suspense fallback={null}>
+      <DashboardPage />
+    </Suspense>
+  );
+}
