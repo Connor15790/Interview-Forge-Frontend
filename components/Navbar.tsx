@@ -98,7 +98,7 @@ export default function Navbar() {
                     {user.plan === "free" && (
                       <>
                         <Link
-                          href="/upgrade"
+                          href="/upgrade-pro"
                           onClick={() => setMenuOpen(false)}
                           className="flex w-full items-center gap-2 px-4 py-2.5 text-sm font-medium text-secondary no-underline transition-colors hover:bg-surface-raised hover:text-primary"
                         >

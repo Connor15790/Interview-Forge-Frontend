@@ -62,7 +62,7 @@ export default function GeneratePage() {
     "Almost done...",
   ];
 
-  async function handleGenerate() {
+  const handleGenerate = async () => {
     if (!topic.trim()) {
       setError("Please enter a topic before generating.");
       return;

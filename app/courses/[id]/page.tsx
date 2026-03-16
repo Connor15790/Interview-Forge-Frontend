@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import api from "@/lib/axios";
+import { CircleArrowDown } from "lucide-react";
 
 interface Quiz {
   _id: string;
@@ -84,10 +85,15 @@ export default function CoursePage() {
         try {
           const enrollRes = await api.get(`/api/enrollment/${id}`);
           const enrollData: Enrollment = enrollRes.data;
-          setEnrollment(enrollData);
-          setCompletedLessons(new Set(enrollData.progress));
-        } catch {
-          // 404 means not enrolled yet — that's fine
+          // Only set enrollment if we got a valid document with an _id
+          if (enrollData?._id) {
+            setEnrollment(enrollData);
+            setCompletedLessons(new Set(enrollData.progress));
+          }
+        } catch (err: any) {
+          if (err.response?.status !== 404) {
+            console.error("Enrollment fetch error:", err);
+          }
         }
       } catch {
         setError("Failed to load course. Please try again.");
@@ -99,7 +105,7 @@ export default function CoursePage() {
     fetchData();
   }, [id]);
 
-  async function handleEnroll() {
+  const handleEnroll = async () => {
     setEnrolling(true);
     try {
       const res = await api.post(`/api/enrollment/${id}`);
@@ -122,9 +128,10 @@ export default function CoursePage() {
 
       // Move to next lesson if available
       const idx = course!.lessons.findIndex((l) => l._id === lessonId);
-      if (idx < course!.lessons.length - 1) {
-        setActiveLessonId(course!.lessons[idx + 1]._id);
-      }
+      // if (idx < course!.lessons.length - 1) {
+      //   setActiveLessonId(course!.lessons[idx + 1]._id);
+      //   window.scrollTo({ top: 0, behavior: "smooth" });
+      // }
     } catch {
       setError("Failed to mark lesson complete. Please try again.");
     } finally {
@@ -247,7 +254,6 @@ export default function CoursePage() {
 
         {/* Main layout */}
         <div className="flex gap-6 animate-fade-up-1">
-
           {/* Sidebar */}
           <aside className="hidden w-64 shrink-0 lg:block">
             <div className="sticky top-24 rounded-xl border border-border bg-surface p-3 shadow-sm">
@@ -286,18 +292,26 @@ export default function CoursePage() {
 
           {/* Content */}
           <div className="min-w-0 flex-1">
-
             {/* Lesson header */}
             <div className="mb-6 rounded-xl border border-border bg-surface p-6 shadow-sm">
-              <div className="mb-1 flex items-center gap-2">
-                <span className="text-xs font-semibold uppercase tracking-widest text-muted">
-                  Lesson {activeLesson.order}
-                </span>
-                {isLessonComplete && (
-                  <span className="rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-xs font-semibold text-green-700">
-                    Completed
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-widest text-muted">
+                    Lesson {activeLesson.order}
                   </span>
-                )}
+                  {isLessonComplete && (
+                    <span className="rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-xs font-semibold text-green-700">
+                      Completed
+                    </span>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" })}
+                  className="text-xs font-semibold uppercase tracking-widest text-muted hover:text-gray-800 cursor-pointer"
+                >
+                  <CircleArrowDown />
+                </button>
               </div>
               <h2 className="mb-4 text-xl font-bold tracking-tight text-primary">
                 {activeLesson.title}
@@ -438,7 +452,10 @@ export default function CoursePage() {
                 <button
                   onClick={() => {
                     const idx = course.lessons.findIndex((l) => l._id === activeLessonId);
-                    if (idx < course.lessons.length - 1) setActiveLessonId(course.lessons[idx + 1]._id);
+                    if (idx < course.lessons.length - 1) {
+                      setActiveLessonId(course.lessons[idx + 1]._id)
+                      window.scrollTo({ top: 0, behavior: "instant" })
+                    };
                   }}
                   disabled={course.lessons[course.lessons.length - 1]._id === activeLessonId}
                   className="rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"

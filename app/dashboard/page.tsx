@@ -1,8 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
+import { useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
+
 import api from "@/lib/axios";
 
 interface Course {
@@ -37,10 +41,42 @@ const topicStyles: Record<string, string> = {
   OS: "bg-yellow-50 text-yellow-700",
 };
 
-export default function DashboardPage() {
+const DashboardPage = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [upgradeSuccess, setUpgradeSuccess] = useState(false);
+  const [verifyingPayment, setVerifyingPayment] = useState(false);
+
+  const searchParams = useSearchParams();
+  const { update: updateSession } = useSession();
+
+  // Handle Stripe redirect back with session_id
+  useEffect(() => {
+    const sessionId = searchParams.get("session_id");
+    if (!sessionId) return;
+
+    async function verifyPayment() {
+      setVerifyingPayment(true);
+      try {
+        await api.post("/api/stripe/verifyPayment", { sessionId });
+        // Refresh NextAuth session so plan updates everywhere
+        await updateSession();
+        setUpgradeSuccess(true);
+        // Clean up the URL without triggering a reload
+        window.history.replaceState({}, "", "/dashboard");
+        // Force NextAuth to refetch the session from the server
+        await updateSession({ force: true });
+        setUpgradeSuccess(true);
+      } catch (err: any) {
+        console.error("Payment verification failed:", err);
+      } finally {
+        setVerifyingPayment(false);
+      }
+    }
+
+    verifyPayment();
+  }, [searchParams]);
 
   useEffect(() => {
     async function fetchCourses() {
@@ -62,6 +98,41 @@ export default function DashboardPage() {
       <Navbar />
 
       <main className="mx-auto max-w-6xl px-6 py-12">
+        {/* Payment verifying banner */}
+        {verifyingPayment && (
+          <div className="mb-6 flex items-center gap-3 rounded-xl border border-accent/20 bg-accent/5 px-5 py-4 text-sm text-accent">
+            <svg className="h-4 w-4 animate-spin shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+            </svg>
+            Verifying your payment...
+          </div>
+        )}
+
+        {/* Upgrade success banner */}
+        {upgradeSuccess && (
+          <div className="mb-6 flex items-center justify-between rounded-xl border border-green-200 bg-green-50 px-5 py-4">
+            <div className="flex items-center gap-3">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-success/10 text-sm text-success">
+                ✓
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-green-800">
+                  Welcome to Pro!
+                </p>
+                <p className="text-xs text-green-700">
+                  You now have unlimited course generations and all Pro features.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setUpgradeSuccess(false)}
+              className="cursor-pointer border-none bg-transparent text-xs text-green-600 hover:text-green-800"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
 
         {/* Header */}
         <div className="mb-10 animate-fade-up">
@@ -219,3 +290,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+export default DashboardPage;

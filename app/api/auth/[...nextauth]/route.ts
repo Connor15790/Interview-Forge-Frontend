@@ -74,19 +74,34 @@ export const authOptions: NextAuthOptions = {
       return true;
     },
 
-    async jwt({ token, user, account }) {
+    async jwt({ token, user, account, trigger }) {
+      if (trigger === "update" && token.email) {
+        console.log("Session update triggered for:", token.email);
+        try {
+          const url = `${process.env.API_URL}/api/auth/fetchUser?email=${token.email}`;
+          console.log("Fetching from:", url);
+          const res = await fetch(url);
+          const data = await res.json();
+          console.log("Refresh response:", res.status, data);
+          if (res.ok) {
+            const data = await res.json();
+            token.plan = data.plan;
+            token._id = data._id;
+            token.token = data.token;
+          }
+        } catch (error) {
+          console.error("Session refresh error:", error);
+        }
+      }
+
       if (user) {
         if (account?.provider === "google") {
           // Fetch _id, plan and a signed token from Express
           try {
             const url = `${process.env.NEXT_PUBLIC_API_URL}/api/auth/fetchUser?email=${user.email}`;
-            console.log("Fetching me from:", url);
 
             const res = await fetch(url);
             const data = await res.json();
-
-            console.log("me response status:", res.status);
-            console.log("me response data:", data);
 
             if (res.ok) {
               token._id = data._id;
