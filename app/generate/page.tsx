@@ -140,7 +140,7 @@ export default function GeneratePage() {
                     </p>
                   </div>
                   <a
-                    href="/upgrade"
+                    href="/upgrade-pro"
                     className="shrink-0 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white no-underline transition-colors hover:bg-amber-600"
                   >
                     Upgrade
